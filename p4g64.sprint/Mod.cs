@@ -1,4 +1,5 @@
-﻿using p4g64.sprint.Configuration;
+﻿using p4g64.InputLibrary64.Interfaces;
+using p4g64.sprint.Configuration;
 using p4g64.sprint.Template;
 using Reloaded.Hooks.Definitions;
 using Reloaded.Mod.Interfaces;
@@ -42,9 +43,12 @@ public unsafe class Mod : ModBase // <= Do not Remove.
     /// </summary>
     private readonly IModConfig _modConfig;
 
+    private IInputHook _inputHook;
+
+    private bool _isSprinting;
+
     private IHook<MovePlayerDelegate> _movePlayerHook;
     private IHook<GetRunAnimationIdDelegate> _getRunAnimationHook;
-    private int* _inputs;
 
     public Mod(ModContext context)
     {
@@ -56,41 +60,62 @@ public unsafe class Mod : ModBase // <= Do not Remove.
         _modConfig = context.ModConfig;
         Initialise(_logger, _configuration, _modLoader);
 
+        var inputHookControllr = _modLoader.GetController < IInputHook > ();
+        if (!inputHookControllr.TryGetTarget(out _inputHook))
+        {
+            LogError("Failed to get input hook library. The mod won't work!");
+            return;
+        }
+        
+        _inputHook.OnInput += OnInput;
+        
         SigScan("40 53 48 83 EC 70 48 8B D9 44 0F 29 44 24 ?? 48 8D 0D ?? ?? ?? ?? 44 0F 28 C1", "MovePlayer", address =>
         {
             _movePlayerHook = _hooks!.CreateHook<MovePlayerDelegate>(MovePlayer, address).Activate();
         });
-
-        SigScan("8B 05 ?? ?? ?? ?? 0F BA E0 0E 73 ?? B8 03 00 00 00", "InputsPtr", address =>
-        {
-            _inputs = (int*)GetGlobalAddress(address + 2) + 2;
-        });
-
-        SigScan("40 53 48 83 EC 20 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 FB 01 0F 85 ?? ?? ?? ??", "GetRunAnimationId", address =>
-        {
-            _getRunAnimationHook = _hooks!.CreateHook<GetRunAnimationIdDelegate>(GetRunAnimationId, address).Activate();
-        });
+        
+        // SigScan("40 53 48 83 EC 20 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 FB 01 0F 85 ?? ?? ?? ??", "GetRunAnimationId", address =>
+        // {
+        //     _getRunAnimationHook = _hooks!.CreateHook<GetRunAnimationIdDelegate>(GetRunAnimationId, address).Activate();
+        // });
     }
+    
+    private void OnInput(int input, bool risingEdge, bool controlType)
+    {
+        bool sprintButtonPressed = (input & (int)_configuration.SprintButton) != 0;
+        if (!_configuration.ToggleSprint)
+        {
+            _isSprinting = sprintButtonPressed;
+            if (_isSprinting != sprintButtonPressed)
+            {
+                LogDebug($"Sprint turned {(_isSprinting ? "on" : "off")}");
+            }
+        }
+        else if(sprintButtonPressed && risingEdge)
+        {
+            _isSprinting = !_isSprinting;
+            LogDebug($"Sprint turned {(_isSprinting ? "on" : "off")}");
+        }
+    }
+
 
     private void MovePlayer(nuint param_1, float speed)
     {
-        if (IsSprinting())
-            speed *= _configuration.SprintMultiplier;
+        if (_isSprinting)
+        {
+            speed *= (float)_configuration.SprintMultiplier;
+        }
         _movePlayerHook.OriginalFunction(param_1, speed);
     }
 
-    private int GetRunAnimationId(int partyMember)
-    {
-        if (!IsSprinting())
-            return _getRunAnimationHook.OriginalFunction(partyMember);
-
-        return _configuration.SprintAnimation;
-    }
-
-    private bool IsSprinting()
-    {
-        return (*_inputs >> _configuration.SprintButton & 1) != 0;
-    }
+    // TODO need to actually have a run animation :(
+    // private int GetRunAnimationId(int partyMember)
+    // {
+    //     if (!_isSprinting)
+    //         return _getRunAnimationHook.OriginalFunction(partyMember);
+    //
+    //     return _configuration.SprintAnimation;
+    // }
 
     private delegate void MovePlayerDelegate(nuint param_1, float speed);
     private delegate int GetRunAnimationIdDelegate(int partyMember);

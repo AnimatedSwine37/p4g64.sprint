@@ -16,7 +16,8 @@
   "IsUniversalMod": false,
   "ModDependencies": [
     "reloaded.sharedlib.hooks",
-    "Reloaded.Memory.SigScan.ReloadedII"
+    "Reloaded.Memory.SigScan.ReloadedII",
+    "p4g64.InputLibrary64"
   ],
   "OptionalDependencies": [],
   "SupportedAppId": ["p4g.exe"],

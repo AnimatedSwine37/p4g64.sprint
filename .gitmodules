@@ -1,0 +1,3 @@
+[submodule "Submodules/p4g64.InputLibrary64"]
+	path = Submodules/p4g64.InputLibrary64
+	url = https://github.com/seyleonhart/p4g64.InputLibrary64.git
