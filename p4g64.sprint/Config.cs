@@ -10,12 +10,12 @@ public class Config : Configurable<Config>
     public bool DebugEnabled { get; set; } = false;
 
     [DisplayName("Sprint button")]
-    [Description("Thee button to press to sprint. Changing in game key-binds changes what these mean.")]
+    [Description("The button to press to sprint. Changing in game key-binds changes what these mean.")]
     [DefaultValue(InputType.Circle)]
     public InputType SprintButton { get; set; } = InputType.Circle;
     
     [DisplayName("Toggle Sprint")]
-    [Description("If set to true then pressing the sprint button will toggle it. Otherwise you sprint only when it is held.")]
+    [Description("If enabled then pressing the sprint button will toggle it. Otherwise you sprint only when it is held.")]
     [DefaultValue(false)]
     public bool ToggleSprint { get; set; } = false;
     
